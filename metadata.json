@@ -1,0 +1,6 @@
+{
+  "name": "Houston NHBS Syphilis Testing Sites",
+  "description": "An interactive map displaying Houston NHBS Syphilis Testing Sites, offering official Houston Health Department clinics and supportive partner locations with nearest ZIP code search.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
