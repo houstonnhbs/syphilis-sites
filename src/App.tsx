@@ -6,20 +6,14 @@ import {
   Clock, 
   Phone, 
   RotateCcw, 
-  Layers,
-  Globe
+  Layers
 } from 'lucide-react';
 import { HOUSTON_MOCK_SITES } from './data';
 import { SurveySite, ClinicTypeFilter } from './types';
 import { ZIP_CENTROIDS, getHaversineDistance } from './zipCodes';
-import { TRANSLATIONS, Language } from './translations';
 
 export default function App() {
   const L = (window as any).L;
-
-  // Language state ('en' | 'es')
-  const [lang, setLang] = useState<Language>('en');
-  const t = TRANSLATIONS[lang];
 
   // Search & Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,17 +51,16 @@ export default function App() {
 
   // Initial filtering logic (text query + type)
   const filteredSites = HOUSTON_MOCK_SITES.filter(site => {
-    const activeDescription = (lang === 'es' && site.descriptionEs) ? site.descriptionEs : site.description;
     const matchesSearch = 
       site.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       site.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activeDescription.toLowerCase().includes(searchQuery.toLowerCase());
+      site.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = selectedType === 'ALL' || site.type === selectedType;
     
     return matchesSearch && matchesType;
   });
 
-  // Dynamic distance attachments & sorting when a valid ZIP is specified
+  // Dynamic distance attachments & premium sorting when a valid ZIP is specified
   const sitesWithDistance = filteredSites.map(site => {
     const distance = targetCentroid 
       ? getHaversineDistance(targetCentroid, site.coordinates) 
@@ -97,7 +90,7 @@ export default function App() {
     const container = document.getElementById(mapContainerId);
     if (!container) return;
 
-    // Center map around Houston and surrounding areas with view zoom of 10
+    // Center map around Houston and surrounding areas with view zoom of 10 to fit far clinics like Conroe or Dickinson
     const map = L.map(mapContainerId, {
       center: [29.7450, -95.3900],
       zoom: 10,
@@ -126,12 +119,12 @@ export default function App() {
     };
   }, []); // Run on mount
 
-  // Update markers when filtered lists, distance calculations, or language change
+  // Update markers when filtered lists or distance calculations change
   useEffect(() => {
     if (mapRef.current) {
       updateMapMarkers(sitesWithDistance);
     }
-  }, [searchQuery, selectedType, zipQuery, lang, sitesWithDistance.length]);
+  }, [searchQuery, selectedType, zipQuery, sitesWithDistance.length]);
 
   // Adjust zoom & pan automatically when a valid ZIP is resolved
   useEffect(() => {
@@ -205,25 +198,23 @@ export default function App() {
       if (site.distance !== null && site.distance !== undefined) {
         distanceLine = `
           <div style="font-size: 11px; font-weight: bold; color: #F37021; margin: 4px 0 2px 0;">
-            ${t.milesAway(site.distance.toFixed(1))}
+            📍 ${site.distance.toFixed(1)} miles away
           </div>
         `;
       }
-
-      const activeHours = (lang === 'es' && site.hoursEs) ? site.hoursEs : site.hours;
 
       const popupHtml = `
         <div style="font-family: 'Inter', sans-serif; padding: 0.375rem; max-width: 250px; color: #102A4C;">
           <div style="display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.375rem;">
             <span style="font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid;" class="${badgeClass}">
-              ${site.type === 'Department' ? t.popupHHD : t.popupPartner}
+              ${site.type === 'Department' ? 'HOUSTON HEALTH DEPT' : 'COMMUNITY PARTNER'}
             </span>
           </div>
           <h4 style="font-weight: 700; font-size: 13.5px; margin: 0; color: #102A4C; font-family: 'Outfit', sans-serif;">${site.name}</h4>
           <p style="font-size: 11px; color: #4A5568; margin: 3px 0 0 0; line-height: 1.3;">${site.address}</p>
           ${distanceLine}
           <div style="height: 1px; background-color: #E2E8F0; margin: 6px 0;"></div>
-          <p style="font-size: 10px; color: #4A5568; line-height: 1.3; margin: 0;">${activeHours}</p>
+          <p style="font-size: 10px; color: #4A5568; line-height: 1.3; margin: 0;">${site.hours}</p>
         </div>
       `;
 
@@ -273,41 +264,14 @@ export default function App() {
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-hhd-orange border border-white/10 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-hhd-orange animate-pulse"></span>
-                {t.subHeaderBadge}
+                Official Provider Locator & Interactive Information Map
               </span>
               <h1 className="text-3xl font-bold font-display tracking-tight text-white flex items-center gap-2">
-                {t.title}
+                Houston NHBS Syphilis Testing Sites
               </h1>
               <p className="text-hhd-grey text-sm mt-1 max-w-2xl font-sans">
-                {t.headerDescription}
+                Comprehensive mapping, addresses, operational hours, and Syphilis testing services of official Houston Health Department clinics and supportive Community partners.
               </p>
-            </div>
-
-            {/* Language Toggle Control */}
-            <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-              <div className="flex items-center bg-white/10 p-1 rounded-xl border border-white/15 backdrop-blur-sm">
-                <Globe className="w-4 h-4 text-hhd-orange ml-2 mr-1" />
-                <button
-                  onClick={() => setLang('en')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    lang === 'en' 
-                      ? 'bg-white text-hhd-blue shadow-sm' 
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  English
-                </button>
-                <button
-                  onClick={() => setLang('es')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    lang === 'es' 
-                      ? 'bg-hhd-orange text-white shadow-sm' 
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  Español
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -319,17 +283,17 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center animate-fade-in">
             
             <div className="bg-slate-50 rounded-xl py-3 px-4 border border-slate-200 flex flex-col justify-center items-center">
-              <span className="text-[10px] text-slate-custom font-bold font-mono tracking-wider uppercase mb-1">{t.totalSites}</span>
+              <span className="text-[10px] text-slate-custom font-bold font-mono tracking-wider uppercase mb-1">TOTAL CLINIC SITES</span>
               <span className="text-2xl font-extrabold text-hhd-blue">{kpis.total}</span>
             </div>
 
             <div className="bg-[#EBF3FC] rounded-xl py-3 px-4 border border-[#CADDF6] flex flex-col justify-center items-center">
-              <span className="text-[10px] text-hhd-blue font-bold font-mono tracking-wider uppercase mb-1">{t.hhdClinics}</span>
+              <span className="text-[10px] text-hhd-blue font-bold font-mono tracking-wider uppercase mb-1">HEALTH DEPARTMENT CLINICS</span>
               <span className="text-2xl font-extrabold text-hhd-blue">{kpis.department}</span>
             </div>
 
             <div className="bg-[#FFF3EB] rounded-xl py-3 px-4 border border-[#FCD4BB] flex flex-col justify-center items-center">
-              <span className="text-[10px] text-hhd-orange font-bold font-mono tracking-wider uppercase mb-1">{t.communityClinics}</span>
+              <span className="text-[10px] text-hhd-orange font-bold font-mono tracking-wider uppercase mb-1">COMMUNITY CLINICS</span>
               <span className="text-2xl font-extrabold text-hhd-orange">{kpis.community}</span>
             </div>
 
@@ -358,24 +322,24 @@ export default function App() {
               <div className="absolute bottom-7 right-7 z-[510] bg-white/95 backdrop-blur-md border border-stone-200 rounded-2xl p-4 shadow-lg max-w-[240px]">
                 <h3 className="text-xs font-bold font-display text-hhd-blue uppercase tracking-tight mb-2.5 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-hhd-orange" />
-                  {t.mapKeyTitle}
+                  Map Pin Key
                 </h3>
                 
                 <div className="space-y-2.5 text-[11px]">
                   <div className="flex items-center gap-2.5">
                     <span className="w-3 h-3 rounded-full border border-white bg-hhd-blue shadow-sm"></span>
-                    <span className="text-slate-600 font-semibold">{t.hhdLegend}</span>
+                    <span className="text-slate-600 font-semibold">Houston Health Dept</span>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <span className="w-3 h-3 rounded-full border border-white bg-hhd-orange shadow-sm"></span>
-                    <span className="text-slate-600 font-semibold">{t.partnerLegend}</span>
+                    <span className="text-slate-600 font-semibold">Community Partners</span>
                   </div>
                 </div>
 
                 <div className="h-px bg-stone-100 my-2.5"></div>
                 
                 <div className="text-[9px] text-slate-custom leading-relaxed font-mono">
-                  {t.mapInstruction}
+                  CLICK ON PINS TO ZOOM & REVEAL OPERATIONAL TIMINGS.
                 </div>
               </div>
 
@@ -394,12 +358,12 @@ export default function App() {
                           ? 'bg-[#EBF3FC] border-[#AECBF4] text-hhd-blue border' 
                           : 'bg-[#FFF3EB] border-[#FED9C0] text-[#F37021] border'
                       }`}>
-                        {selectedSite.type === 'Department' ? t.badgeHHDFacility : t.badgePartnerFacility}
+                        {selectedSite.type === 'Department' ? 'Houston Health Department Facility' : 'Community Clinic Partner'}
                       </span>
                       
                       {zipQuery && isValidZip(zipQuery) && targetCentroid && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#EBF3FC] text-hhd-blue border border-[#CADDF6]">
-                          {t.milesFromZip(getHaversineDistance(targetCentroid, selectedSite.coordinates).toFixed(1), zipQuery)}
+                          📍 {getHaversineDistance(targetCentroid, selectedSite.coordinates).toFixed(1)} miles from ZIP {zipQuery}
                         </span>
                       )}
 
@@ -425,13 +389,13 @@ export default function App() {
                     </div>
                     <div className="flex items-center gap-2 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-hhd-blue font-semibold">
                       <Clock className="w-3.5 h-3.5 text-hhd-orange shrink-0" />
-                      <span>{(lang === 'es' && selectedSite.hoursEs) ? selectedSite.hoursEs : selectedSite.hours}</span>
+                      <span>{selectedSite.hours}</span>
                     </div>
                   </div>
                 </div>
 
                 <p className="text-sm text-slate-custom leading-relaxed max-w-4xl bg-slate-50/70 rounded-2xl p-4 border border-slate-100">
-                  <strong className="text-hhd-blue font-bold">{t.servicesLabel}</strong> {(lang === 'es' && selectedSite.descriptionEs) ? selectedSite.descriptionEs : selectedSite.description}
+                  <strong className="text-hhd-blue font-bold">Services & Description:</strong> {selectedSite.description}
                 </p>
               </div>
             )}
@@ -446,14 +410,14 @@ export default function App() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-bold font-display text-hhd-blue flex items-center gap-2">
                   <Filter className="w-4 h-4 text-hhd-orange" />
-                  {t.filterHeader}
+                  Filter Facilities
                 </h2>
                 <button 
                   onClick={handleResetFilters}
                   className="text-xs text-slate-custom hover:text-hhd-orange font-semibold flex items-center gap-1 transition"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  {t.resetFilters}
+                  Reset Filters
                 </button>
               </div>
 
@@ -463,11 +427,11 @@ export default function App() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-[10px] font-bold text-slate-custom font-mono uppercase tracking-wider">
-                      {t.closestZipLabel}
+                      Closest ZIP Code Search
                     </label>
                     {zipQuery && (
                       <span className="text-[10px] font-bold text-hhd-orange font-mono">
-                        {targetCentroid ? t.sortActive : t.unresolvedZip}
+                        {targetCentroid ? '✓ Sort Active' : 'Unresolved ZIP'}
                       </span>
                     )}
                   </div>
@@ -481,7 +445,7 @@ export default function App() {
                         const cleanVal = e.target.value.replace(/\D/g, '');
                         setZipQuery(cleanVal);
                       }}
-                      placeholder={t.zipPlaceholder}
+                      placeholder="Enter 5-digit ZIP (e.g. 77002, 77036)"
                       className="w-full text-sm bg-slate-50 border border-stone-200 rounded-xl pl-10 pr-12 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-hhd-orange/10 focus:border-hhd-orange transition-all font-semibold text-ink font-mono"
                     />
                     {zipQuery && (
@@ -489,18 +453,18 @@ export default function App() {
                         onClick={() => setZipQuery('')}
                         className="absolute right-3 top-3 bg-stone-100 hover:bg-stone-200 text-stone-500 rounded px-1.5 py-1 text-[10px] font-bold transition cursor-pointer"
                       >
-                        {t.clear}
+                        Clear
                       </button>
                     )}
                   </div>
                   {zipQuery && !targetCentroid && zipQuery.length === 5 && (
                     <p className="text-[10px] text-hhd-orange font-medium mt-1">
-                      {t.zipNotFound}
+                      ZIP coordinates outside our current dictionary. Fallback distance calculations disabled.
                     </p>
                   )}
                   {zipQuery && targetCentroid && (
                     <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                      {t.zipSortedNotice(zipQuery)}
+                      Showing clinics sorted by distance from ZIP {zipQuery}.
                     </p>
                   )}
                 </div>
@@ -508,7 +472,7 @@ export default function App() {
                 {/* Text Search Input */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-custom font-mono uppercase tracking-wider mb-1.5">
-                    {t.keywordLabel}
+                    Search Clinics by Keyword
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3.5 top-3 w-4 h-4 text-stone-400" />
@@ -516,7 +480,7 @@ export default function App() {
                       type="text" 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t.searchPlaceholder}
+                      placeholder="e.g. Northside, Montrose, Avenue..."
                       className="w-full text-sm bg-slate-50 border border-stone-200 rounded-xl pl-10 pr-3.5 py-2.5 outline-none focus:bg-white focus:ring-2 focus:ring-hhd-blue/10 focus:border-hhd-blue transition-all font-medium text-ink"
                     />
                   </div>
@@ -525,13 +489,13 @@ export default function App() {
                 {/* Clinic Provider Category Filter Buttons */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-custom font-mono uppercase tracking-wider mb-1.5">
-                    {t.providerCategoryLabel}
+                    Provider Category
                   </label>
                   <div className="flex flex-col gap-1.5">
                     {[
-                      { key: 'ALL', label: t.providerAll },
-                      { key: 'Department', label: t.providerDept },
-                      { key: 'Community', label: t.providerCommunity }
+                      { key: 'ALL', label: 'All Providers' },
+                      { key: 'Department', label: 'Houston Health Department Clinics' },
+                      { key: 'Community', label: 'Community Clinics' }
                     ].map((provider) => (
                       <button
                         key={provider.key}
@@ -556,17 +520,17 @@ export default function App() {
             <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 flex flex-col shrink-0 h-[400px]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-bold font-display text-hhd-blue">
-                   {t.allFacilities(sitesWithDistance.length)}
+                   All Facilities ({sitesWithDistance.length})
                 </h2>
-                <span className="text-[10px] font-mono text-hhd-orange uppercase tracking-wide">{t.metroLabel}</span>
+                <span className="text-[10px] font-mono text-hhd-orange uppercase tracking-wide">Houston Metro</span>
               </div>
 
               <div className="overflow-y-auto pr-1 flex-grow space-y-2.5">
                 {sitesWithDistance.length === 0 ? (
                   <div className="h-44 flex flex-col items-center justify-center text-center p-4">
                     <MapPin className="w-8 h-8 text-stone-300 stroke-[1.5] mb-2" />
-                    <span className="text-sm font-semibold text-stone-500">{t.noResults}</span>
-                    <span className="text-xs text-stone-400 mt-1">{t.tryResetting}</span>
+                    <span className="text-sm font-semibold text-stone-500">No facilities match search</span>
+                    <span className="text-xs text-stone-400 mt-1">Try resetting the selection parameters</span>
                   </div>
                 ) : (
                   sitesWithDistance.map((site) => {
@@ -590,7 +554,7 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black rounded-md border uppercase ${badgeColor}`}>
-                            {site.type === 'Department' ? t.badgeHHD : t.badgePartner}
+                            {site.type === 'Department' ? 'HHD Clinic' : 'Partner'}
                           </span>
 
                           {site.distance !== null && site.distance !== undefined && (
@@ -625,10 +589,10 @@ export default function App() {
       {/* Footer Block */}
       <footer className="bg-white border-t border-stone-200 text-center py-6 mt-auto">
         <p className="text-xs text-slate-custom font-medium">
-          {t.footerTitle}
+          Houston Public Health Services Map • Powered by LeafletJS & Tailwind CSS • Official Interactive Facility Directory
         </p>
         <p className="text-[10px] text-serif text-[#A0AEC0] mt-1.5 leading-relaxed tracking-wide">
-          {t.footerSubtitle}
+          Designed with compliant high-contrast typography, generous negative space, and accessibility standards for the city.
         </p>
       </footer>
 
